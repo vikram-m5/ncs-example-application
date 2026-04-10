@@ -1,0 +1,201 @@
+/*
+ * Copyright (c) 2024
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/dts-v1/;
+#include <nordic/nrf5340_cpuapp_qkaa.dtsi>
+#include <zephyr/dt-bindings/gpio/gpio.h>
+#include "eeg_nrf5340-pinctrl.dtsi"
+#include <vendor/nordic/nrf5340_shared_sram_partition.dtsi>
+
+/ {
+	model = "EEG nRF5340 Board";
+	compatible = "vendor,eeg-nrf5340";
+
+	chosen {
+		zephyr,console = &uart0;
+		zephyr,shell-uart = &uart0;
+		zephyr,sram = &sram0;
+		zephyr,flash = &flash0;
+		zephyr,code-partition = &slot0_partition;
+		zephyr,cdc-acm-uart = &cdc_acm_uart;
+	};
+
+	leds {
+		compatible = "gpio-leds";
+
+		err_led: err_led {
+			gpios = <&gpio0 27 GPIO_ACTIVE_LOW>;
+			label = "Error LED";
+		};
+
+		status_led: status_led {
+			gpios = <&gpio1 10 GPIO_ACTIVE_HIGH>;
+			label = "Status LED";
+		};
+	};
+
+	ads1299_control {
+		compatible = "gpio-keys";
+
+		ads_reset: ads_reset {
+			gpios = <&gpio0 21 GPIO_ACTIVE_LOW>;
+			label = "ADS1299 Reset";
+		};
+
+		ads_pwdn: ads_pwdn {
+			gpios = <&gpio0 19 GPIO_ACTIVE_LOW>;
+			label = "ADS1299 Power Down";
+		};
+
+		ads_start: ads_start {
+			gpios = <&gpio1 4 GPIO_ACTIVE_HIGH>;
+			label = "ADS1299 Start";
+		};
+
+		ads_clksel1: ads_clksel1 {
+			gpios = <&gpio0 25 GPIO_ACTIVE_HIGH>;
+			label = "ADS1299 U1 Clock Select";
+		};
+
+		ads_clksel2: ads_clksel2 {
+			gpios = <&gpio0 24 GPIO_ACTIVE_HIGH>;
+			label = "ADS1299 U2 Clock Select";
+		};
+
+		ads_clksel3: ads_clksel3 {
+			gpios = <&gpio0 26 GPIO_ACTIVE_HIGH>;
+			label = "ADS1299 U3 Clock Select";
+		};
+	};
+
+	aliases {
+		led0 = &err_led;
+		led1 = &status_led;
+	};
+};
+
+&flash0 {
+	partitions {
+		compatible = "fixed-partitions";
+		#address-cells = <1>;
+		#size-cells = <1>;
+
+		boot_partition: partition@0 {
+			label = "mcuboot";
+			reg = <0x00000000 0x10000>;
+		};
+
+		slot0_partition: partition@10000 {
+			label = "image-0";
+			reg = <0x00010000 0x40000>;
+		};
+
+		slot0_ns_partition: partition@50000 {
+			label = "image-0-nonsecure";
+			reg = <0x00050000 0x30000>;
+		};
+
+		slot1_partition: partition@80000 {
+			label = "image-1";
+			reg = <0x00080000 0x40000>;
+		};
+
+		slot1_ns_partition: partition@c0000 {
+			label = "image-1-nonsecure";
+			reg = <0x000c0000 0x30000>;
+		};
+
+		storage_partition: partition@f0000 {
+			label = "storage";
+			reg = <0x000f0000 0x10000>;
+		};
+	};
+};
+
+&gpiote {
+	status = "okay";
+};
+
+&gpio0 {
+	status = "okay";
+};
+
+&gpio1 {
+	status = "okay";
+};
+
+&uart0 {
+	compatible = "nordic,nrf-uarte";
+	status = "okay";
+	current-speed = <115200>;
+	pinctrl-0 = <&uart0_default>;
+	pinctrl-1 = <&uart0_sleep>;
+	pinctrl-names = "default", "sleep";
+};
+
+&i2c1 {
+	compatible = "nordic,nrf-twim";
+	status = "okay";
+	pinctrl-0 = <&i2c1_default>;
+	pinctrl-1 = <&i2c1_sleep>;
+	pinctrl-names = "default", "sleep";
+};
+
+&spi2 {
+	compatible = "nordic,nrf-spim";
+	status = "okay";
+	pinctrl-0 = <&spi2_default>;
+	pinctrl-1 = <&spi2_sleep>;
+	pinctrl-names = "default", "sleep";
+
+	cs-gpios = <&gpio0 11 GPIO_ACTIVE_LOW>,
+		   <&gpio0 12 GPIO_ACTIVE_LOW>,
+		   <&gpio0 20 GPIO_ACTIVE_LOW>;
+
+	ads1299_0: ads1299@0 {
+		compatible = "ti,ads1299";
+		reg = <0>;
+		spi-max-frequency = <4000000>;
+		drdy-gpios = <&gpio1 6 GPIO_ACTIVE_LOW>;
+		reset-gpios = <&gpio0 21 GPIO_ACTIVE_LOW>;
+		pwdn-gpios = <&gpio0 19 GPIO_ACTIVE_LOW>;
+		start-gpios = <&gpio1 4 GPIO_ACTIVE_HIGH>;
+		clksel-gpios = <&gpio0 25 GPIO_ACTIVE_HIGH>;
+		num-channels = <8>;
+		sample-rate = <250>;
+		gain = <24>;
+		daisy-chain;
+	};
+
+	ads1299_1: ads1299@1 {
+		compatible = "ti,ads1299";
+		reg = <1>;
+		spi-max-frequency = <4000000>;
+		clksel-gpios = <&gpio0 24 GPIO_ACTIVE_HIGH>;
+		num-channels = <8>;
+		sample-rate = <250>;
+		gain = <24>;
+	};
+
+	ads1299_2: ads1299@2 {
+		compatible = "ti,ads1299";
+		reg = <2>;
+		spi-max-frequency = <4000000>;
+		clksel-gpios = <&gpio0 26 GPIO_ACTIVE_HIGH>;
+		num-channels = <3>;
+		sample-rate = <250>;
+		gain = <24>;
+	};
+};
+
+&usbd {
+	compatible = "nordic,nrf-usbd";
+	status = "okay";
+
+	cdc_acm_uart: cdc_acm_uart {
+		compatible = "zephyr,cdc-acm-uart";
+	};
+};
+

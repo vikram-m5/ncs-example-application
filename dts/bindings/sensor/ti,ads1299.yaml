@@ -1,0 +1,84 @@
+# Copyright (c) 2024
+# SPDX-License-Identifier: Apache-2.0
+
+description: |
+  TI ADS1299 24-bit 8-channel delta-sigma ADC for EEG acquisition.
+  Communicates via SPI (Mode 1: CPOL=0, CPHA=1).
+
+  Example definition in devicetree:
+
+    &spi2 {
+        ads1299@0 {
+            compatible = "ti,ads1299";
+            reg = <0>;
+            spi-max-frequency = <4000000>;
+            drdy-gpios = <&gpio1 6 GPIO_ACTIVE_LOW>;
+            reset-gpios = <&gpio0 21 GPIO_ACTIVE_LOW>;
+            num-channels = <8>;
+            sample-rate = <250>;
+            gain = <24>;
+        };
+    };
+
+compatible: "ti,ads1299"
+
+include: spi-device.yaml
+
+properties:
+  drdy-gpios:
+    type: phandle-array
+    description: |
+      Data ready GPIO (active low). Required on the master device
+      in a daisy chain, optional on slave devices.
+
+  reset-gpios:
+    type: phandle-array
+    description: |
+      Hardware reset GPIO (active low). Shared across all ADS1299
+      devices. Only specify on the first device.
+
+  pwdn-gpios:
+    type: phandle-array
+    description: |
+      Power down GPIO (active low). Shared across all ADS1299
+      devices. Only specify on the first device.
+
+  start-gpios:
+    type: phandle-array
+    description: |
+      Start conversion GPIO (active high). Shared across all
+      ADS1299 devices. Only specify on the first device.
+
+  clksel-gpios:
+    type: phandle-array
+    description: |
+      Clock source select GPIO. High = internal oscillator,
+      low = external clock input.
+
+  num-channels:
+    type: int
+    default: 8
+    description: |
+      Number of active input channels (1-8). Unused channels
+      are powered down to save power.
+
+  sample-rate:
+    type: int
+    default: 250
+    description: |
+      Output data rate in samples per second.
+      Valid values: 250, 500, 1000, 2000, 4000, 8000, 16000.
+
+  gain:
+    type: int
+    default: 24
+    description: |
+      PGA gain setting applied to all active channels.
+      Valid values: 1, 2, 4, 6, 8, 12, 24.
+
+  daisy-chain:
+    type: boolean
+    description: |
+      Enable daisy chain read mode. When set, this device is the
+      master that reads data from all downstream devices in a
+      single SPI transaction.

@@ -1,0 +1,34 @@
+# Copyright (c) 2024
+# SPDX-License-Identifier: Apache-2.0
+
+config ADS1299
+	bool "TI ADS1299 24-bit ADC driver"
+	default y
+	depends on DT_HAS_TI_ADS1299_ENABLED
+	select SPI
+	select GPIO
+	help
+	  Enable driver for the TI ADS1299 24-bit delta-sigma ADC,
+	  commonly used for EEG biopotential measurements.
+
+if ADS1299
+
+config ADS1299_TRIGGER
+	bool "ADS1299 DRDY trigger support"
+	default y
+	help
+	  Enable data-ready interrupt trigger support for continuous
+	  data acquisition mode.
+
+config ADS1299_INIT_PRIORITY
+	int "ADS1299 init priority"
+	default 90
+	help
+	  Device driver initialization priority. Must be after SPI
+	  driver initialization (typically 70).
+
+module = ADS1299
+module-str = ads1299
+source "subsys/logging/Kconfig.template.log_config"
+
+endif # ADS1299

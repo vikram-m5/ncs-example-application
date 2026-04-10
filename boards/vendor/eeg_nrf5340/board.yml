@@ -1,0 +1,6 @@
+board:
+  name: eeg_nrf5340
+  full_name: EEG nRF5340 Board
+  vendor: vendor
+  socs:
+  - name: 'nrf5340'

@@ -1,0 +1,36 @@
+/*
+ * Copyright (c) 2024
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/dts-v1/;
+#include <nordic/nrf5340_cpunet_qkaa.dtsi>
+
+/ {
+	model = "EEG nRF5340 Board Network Core";
+	compatible = "vendor,eeg-nrf5340-cpunet";
+
+	chosen {
+		zephyr,sram = &sram1;
+		zephyr,flash = &flash1;
+		zephyr,code-partition = &slot0_partition;
+	};
+};
+
+&flash1 {
+	partitions {
+		compatible = "fixed-partitions";
+		#address-cells = <1>;
+		#size-cells = <1>;
+
+		slot0_partition: partition@0 {
+			label = "image-0";
+			reg = <0x00000000 0x20000>;
+		};
+
+		slot1_partition: partition@20000 {
+			label = "image-1";
+			reg = <0x00020000 0x20000>;
+		};
+	};
+};
