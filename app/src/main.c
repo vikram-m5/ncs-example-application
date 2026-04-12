@@ -84,25 +84,39 @@ static void send_eeg_packet(const uint8_t *raw_buf, size_t len)
 	 * In daisy chain mode, data arrives as:
 	 * [U1 status(3)][U1 ch1-8(24)][U2 status(3)][U2 ch1-8(24)][U3 status(3)][U3 ch1-8(24)]
 	 *
-	 * Extract 8 channels from U1, 8 from U2, 3 from U3.
+	 * Extract 8 channels from U1 (ch1-8), 8 from U2 (ch1-8),
+	 * 3 from U3 (ch5, ch6, ch7 = electrodes 17, 18, 19).
 	 */
 	int dev_offsets[3] = {
 		0,                    /* U1 at byte 0 */
 		ADS_SAMPLE_BYTES,     /* U2 at byte 27 */
 		ADS_SAMPLE_BYTES * 2  /* U3 at byte 54 */
 	};
-	int dev_channels[3] = { EEG_CHANNELS_U1, EEG_CHANNELS_U2, EEG_CHANNELS_U3 };
 
-	for (int d = 0; d < 3; d++) {
-		int base = dev_offsets[d] + ADS_STATUS_BYTES;
+	/* U1: all 8 channels (ch1-8) */
+	for (int ch = 0; ch < 8; ch++) {
+		int src = dev_offsets[0] + ADS_STATUS_BYTES + (ch * ADS_CHANNEL_BYTES);
+		packet[pos++] = raw_buf[src];
+		packet[pos++] = raw_buf[src + 1];
+		packet[pos++] = raw_buf[src + 2];
+	}
 
-		for (int ch = 0; ch < dev_channels[d]; ch++) {
-			int src = base + (ch * ADS_CHANNEL_BYTES);
+	/* U2: all 8 channels (ch1-8) */
+	for (int ch = 0; ch < 8; ch++) {
+		int src = dev_offsets[1] + ADS_STATUS_BYTES + (ch * ADS_CHANNEL_BYTES);
+		packet[pos++] = raw_buf[src];
+		packet[pos++] = raw_buf[src + 1];
+		packet[pos++] = raw_buf[src + 2];
+	}
 
-			packet[pos++] = raw_buf[src];
-			packet[pos++] = raw_buf[src + 1];
-			packet[pos++] = raw_buf[src + 2];
-		}
+	/* U3: channels 5, 6, 7 only (0-indexed: ch4, ch5, ch6) */
+	static const int u3_channels[] = { 4, 5, 6 };
+	for (int i = 0; i < EEG_CHANNELS_U3; i++) {
+		int src = dev_offsets[2] + ADS_STATUS_BYTES +
+			  (u3_channels[i] * ADS_CHANNEL_BYTES);
+		packet[pos++] = raw_buf[src];
+		packet[pos++] = raw_buf[src + 1];
+		packet[pos++] = raw_buf[src + 2];
 	}
 
 	/* Send over USB CDC */

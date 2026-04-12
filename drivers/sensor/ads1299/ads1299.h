@@ -117,7 +117,7 @@ struct ads1299_config {
 	struct gpio_dt_spec pwdn_gpio;
 	struct gpio_dt_spec start_gpio;
 	struct gpio_dt_spec clksel_gpio;
-	uint8_t num_channels;
+	uint8_t channel_mask;
 	uint16_t sample_rate;
 	uint8_t gain;
 	bool daisy_chain;

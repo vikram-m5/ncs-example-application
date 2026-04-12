@@ -129,22 +129,21 @@ static int ads1299_configure_channels(const struct device *dev)
 	uint8_t gain_bits = ads1299_gain_to_reg(cfg->gain);
 	int ret;
 
-	/* Configure active channels: gain + normal input + SRB2 */
-	for (int ch = 0; ch < cfg->num_channels; ch++) {
-		uint8_t ch_reg = gain_bits | ADS1299_CHNSET_MUX_NORMAL;
+	/* Configure each channel based on channel_mask bitmask */
+	for (int ch = 0; ch < ADS1299_MAX_CHANNELS; ch++) {
+		uint8_t ch_reg;
+
+		if (cfg->channel_mask & BIT(ch)) {
+			/* Active channel: set gain + normal input */
+			ch_reg = gain_bits | ADS1299_CHNSET_MUX_NORMAL;
+		} else {
+			/* Inactive channel: power down + short inputs */
+			ch_reg = ADS1299_CHNSET_PD | ADS1299_CHNSET_MUX_SHORT;
+		}
+
 		ret = ads1299_write_register(dev, ADS1299_REG_CH1SET + ch, ch_reg);
 		if (ret < 0) {
 			LOG_ERR("Failed to configure channel %d (%d)", ch + 1, ret);
-			return ret;
-		}
-	}
-
-	/* Power down unused channels */
-	for (int ch = cfg->num_channels; ch < ADS1299_MAX_CHANNELS; ch++) {
-		ret = ads1299_write_register(dev, ADS1299_REG_CH1SET + ch,
-					     ADS1299_CHNSET_PD | ADS1299_CHNSET_MUX_SHORT);
-		if (ret < 0) {
-			LOG_ERR("Failed to power down channel %d (%d)", ch + 1, ret);
 			return ret;
 		}
 	}
@@ -206,8 +205,8 @@ static int ads1299_sample_fetch(const struct device *dev,
 		       ((uint32_t)data->raw_buf[1] << 8) |
 		       ((uint32_t)data->raw_buf[2]);
 
-	/* Parse channel data */
-	for (int ch = 0; ch < cfg->num_channels; ch++) {
+	/* Parse all 8 channel data slots (always present in SPI data) */
+	for (int ch = 0; ch < ADS1299_MAX_CHANNELS; ch++) {
 		int offset = ADS1299_STATUS_BYTES + (ch * ADS1299_CHANNEL_BYTES);
 		data->channel_data[ch] = ads1299_sign_extend_24(&data->raw_buf[offset]);
 	}
@@ -305,14 +304,16 @@ int ads1299_enable_test_signal(const struct device *dev)
 		return ret;
 	}
 
-	/* Set all active channels to test signal mux */
+	/* Set active channels (per bitmask) to test signal mux */
 	uint8_t gain_bits = ads1299_gain_to_reg(cfg->gain);
 
-	for (int ch = 0; ch < cfg->num_channels; ch++) {
-		ret = ads1299_write_register(dev, ADS1299_REG_CH1SET + ch,
-					     gain_bits | ADS1299_CHNSET_MUX_TEST);
-		if (ret < 0) {
-			return ret;
+	for (int ch = 0; ch < ADS1299_MAX_CHANNELS; ch++) {
+		if (cfg->channel_mask & BIT(ch)) {
+			ret = ads1299_write_register(dev, ADS1299_REG_CH1SET + ch,
+						     gain_bits | ADS1299_CHNSET_MUX_TEST);
+			if (ret < 0) {
+				return ret;
+			}
 		}
 	}
 
@@ -339,7 +340,8 @@ int ads1299_get_channel_raw(const struct device *dev, uint8_t channel,
 	struct ads1299_data *data = dev->data;
 	const struct ads1299_config *cfg = dev->config;
 
-	if (channel >= cfg->num_channels) {
+	if (channel >= ADS1299_MAX_CHANNELS ||
+	    !(cfg->channel_mask & BIT(channel))) {
 		return -EINVAL;
 	}
 
@@ -469,7 +471,7 @@ static int ads1299_init(const struct device *dev)
 		return -EIO;
 	}
 
-	LOG_INF("ADS1299 detected, ID: 0x%02X, channels: %d", id, cfg->num_channels);
+	LOG_INF("ADS1299 detected, ID: 0x%02X, channel mask: 0x%02X", id, cfg->channel_mask);
 
 	/* Configure CONFIG1: data rate + daisy chain mode */
 	uint8_t config1;
@@ -522,8 +524,8 @@ static int ads1299_init(const struct device *dev)
 	}
 #endif
 
-	LOG_INF("ADS1299 initialized: %d channels, %d SPS, gain=%d",
-		cfg->num_channels, cfg->sample_rate, cfg->gain);
+	LOG_INF("ADS1299 initialized: mask=0x%02X, %d SPS, gain=%d",
+		cfg->channel_mask, cfg->sample_rate, cfg->gain);
 
 	return 0;
 }
@@ -543,7 +545,7 @@ static int ads1299_init(const struct device *dev)
 		.pwdn_gpio = ADS1299_GPIO_SPEC_OR_EMPTY(inst, pwdn_gpios),    \
 		.start_gpio = ADS1299_GPIO_SPEC_OR_EMPTY(inst, start_gpios),  \
 		.clksel_gpio = ADS1299_GPIO_SPEC_OR_EMPTY(inst, clksel_gpios),\
-		.num_channels = DT_INST_PROP(inst, num_channels),              \
+		.channel_mask = DT_INST_PROP(inst, channel_mask),              \
 		.sample_rate = DT_INST_PROP(inst, sample_rate),                \
 		.gain = DT_INST_PROP(inst, gain),                              \
 		.daisy_chain = DT_INST_PROP(inst, daisy_chain),                \

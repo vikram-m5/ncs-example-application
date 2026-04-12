@@ -49,7 +49,7 @@ static void ads1299_work_handler(struct k_work *work)
 			       ((uint32_t)data->raw_buf[2]);
 
 		/* Parse channel data for this device */
-		for (int ch = 0; ch < cfg->num_channels; ch++) {
+		for (int ch = 0; ch < ADS1299_MAX_CHANNELS; ch++) {
 			int offset = ADS1299_STATUS_BYTES +
 				     (ch * ADS1299_CHANNEL_BYTES);
 			data->channel_data[ch] =

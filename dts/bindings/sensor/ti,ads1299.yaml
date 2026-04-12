@@ -14,7 +14,7 @@ description: |
             spi-max-frequency = <4000000>;
             drdy-gpios = <&gpio1 6 GPIO_ACTIVE_LOW>;
             reset-gpios = <&gpio0 21 GPIO_ACTIVE_LOW>;
-            num-channels = <8>;
+            channel-mask = <0xFF>;
             sample-rate = <250>;
             gain = <24>;
         };
@@ -55,12 +55,15 @@ properties:
       Clock source select GPIO. High = internal oscillator,
       low = external clock input.
 
-  num-channels:
+  channel-mask:
     type: int
-    default: 8
+    default: 0xFF
     description: |
-      Number of active input channels (1-8). Unused channels
-      are powered down to save power.
+      Bitmask of active input channels. Bit N corresponds to
+      channel N+1 (bit 0 = CH1, bit 7 = CH8). Channels with
+      their bit cleared are powered down. Examples:
+        0xFF = all 8 channels active
+        0x70 = channels 5, 6, 7 active (bits 4, 5, 6)
 
   sample-rate:
     type: int
